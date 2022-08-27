@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "SmoothNet",
+	"Description": "Replicates movement using hermite snapshot interpolation",
+	"Category": "Other",
+	"CreatedBy": "1polygon",
+	"CreatedByURL": "https://github.com/1polygon",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SmoothNet",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
