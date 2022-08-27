@@ -1,2 +1,2 @@
-# ue5-smoothnet
-Replicates movement using hermite snapshot interpolation
+# SmoothNet
+A plugin for smooth movement replication using hermite snapshot interpolation.
