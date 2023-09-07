@@ -12,7 +12,7 @@ void USmoothNet::BeginPlay()
 
 	if (UseActor)
 	{
-		Target = GetOwner()->GetRootComponent();
+		TargetComponent = GetOwner()->GetRootComponent();
 	}
 	else
 	{
@@ -24,20 +24,20 @@ void USmoothNet::BeginPlay()
 			const USceneComponent* Component = Components[i];
 			if (Component->GetName().Equals(ComponentName, ESearchCase::IgnoreCase))
 			{
-				Target = const_cast<USceneComponent*>(Component);
-				LastLocation = Target->GetComponentLocation();
+				TargetComponent = const_cast<USceneComponent*>(Component);
+				LastLocation = TargetComponent->GetComponentLocation();
 				break;
 			}
 		}
 	}
 
-	UStaticMeshComponent* Component = Cast<UStaticMeshComponent>(Target);
-	if(IsValid(Component))
+	UStaticMeshComponent* Component = Cast<UStaticMeshComponent>(TargetComponent);
+	if (IsValid(Component))
 	{
-		if(!HasAuthority())
+		if (!HasAuthority())
 		{
 			Component->SetSimulatePhysics(false);
-			Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);				
+			// Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);				
 		}
 	}
 
@@ -49,12 +49,12 @@ void USmoothNet::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!IsValid(Target))
+	if (!IsValid(TargetComponent))
 	{
 		return;
 	}
 
-	const bool IsServer = GetWorld()->IsServer();
+	const bool IsServer = IsNetMode(NM_DedicatedServer) || IsNetMode(NM_ListenServer);
 	const float TimeSeconds = GetWorld()->TimeSeconds;
 
 	if (HasAuthority())
@@ -62,8 +62,8 @@ void USmoothNet::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 		if (TimeSeconds - LastTick > 1.0 / (float)TickRate)
 		{
 			FSnapshot Snapshot = FSnapshot();
-			Snapshot.Location = Target->GetComponentLocation();
-			Snapshot.Rotation = Target->GetComponentRotation().Quaternion();
+			Snapshot.Location = TargetComponent->GetComponentLocation();
+			Snapshot.Rotation = TargetComponent->GetComponentRotation().Quaternion();
 			Snapshot.Velocity = Velocity;
 
 			if (IsServer)
@@ -93,19 +93,19 @@ void USmoothNet::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 			const FVector Location = Hermite(Alpha, LastSnapshot.Location, Buffer[0].Location, LastSnapshot.Velocity,
 			                                 Buffer[0].Velocity);
 			const FQuat Rotation = FQuat::Slerp(LastSnapshot.Rotation, Buffer[0].Rotation, Alpha);
-			Target->SetWorldLocationAndRotation(Location, Rotation);
+			TargetComponent->SetWorldLocationAndRotation(Location, Rotation);
 			// DrawDebugBox(GetWorld(), Location, FVector(300, 200, 200), Rotation, FColor::Red, false, 0.1, 0, 1);
 		}
 	}
 
 	Time += DeltaTime;
-	Velocity = Target->GetComponentLocation() - LastLocation;
-	LastLocation = Target->GetComponentLocation();
+	Velocity = TargetComponent->GetComponentLocation() - LastLocation;
+	LastLocation = TargetComponent->GetComponentLocation();
 }
 
 void USmoothNet::SendSnapshotToServer_Implementation(FSnapshot Snapshot)
 {
-	Target->SetWorldLocationAndRotation(Snapshot.Location, Snapshot.Rotation);
+	TargetComponent->SetWorldLocationAndRotation(Snapshot.Location, Snapshot.Rotation);
 	this->SendSnapshotToClients(Snapshot);
 }
 
@@ -118,7 +118,8 @@ void USmoothNet::SendSnapshotToClients_Implementation(FSnapshot Snapshot)
 {
 	if (!HasAuthority())
 	{
-		if (!GetWorld()->IsServer())
+		const bool IsServer = IsNetMode(NM_DedicatedServer) || IsNetMode(NM_ListenServer);
+		if (!IsServer)
 		{
 			Snapshot.Time = Time;
 			Buffer.Add(Snapshot);
@@ -134,18 +135,16 @@ bool USmoothNet::SendSnapshotToClients_Validate(FSnapshot Snapshot)
 
 bool USmoothNet::HasAuthority() const
 {
+	const bool IsServer = IsNetMode(NM_DedicatedServer) || IsNetMode(NM_ListenServer);
 	switch (AuthorityMode)
 	{
-	case EAuthorityMode::Owner: break;
-		return false;
-	case EAuthorityMode::PawnOwner:
-		return GetOwner()->GetInstigator()->IsLocallyControlled() && !GetWorld()->IsServer();
+	case EAuthorityMode::Client:
+		return GetOwner()->GetInstigator()->IsLocallyControlled() && !IsServer;
 	case EAuthorityMode::Server:
-		return GetWorld()->IsServer();
+		return IsServer;
 	default:
 		return false;
 	}
-	return false;
 }
 
 FVector USmoothNet::Hermite(const float Alpha, const FVector V1, const FVector V2, const FVector V3, const FVector V4)

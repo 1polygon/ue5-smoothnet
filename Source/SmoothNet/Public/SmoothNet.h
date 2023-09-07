@@ -7,9 +7,8 @@
 UENUM(BlueprintType)
 enum class EAuthorityMode : uint8
 {
-	Owner,
-	PawnOwner,
-	Server
+	Client UMETA(ToolTip="Replicates the movement of the locally controlled pawn to the server and other clients."),
+	Server UMETA(ToolTip="Replicates the movement of the server to all clients.")
 };
 
 USTRUCT()
@@ -18,13 +17,13 @@ struct FSnapshot
 	GENERATED_BODY()
 
 	UPROPERTY()
-	FVector Location;
+	FVector Location = FVector::Zero();
 	UPROPERTY()
-	FQuat Rotation;
+	FQuat Rotation = FQuat::Identity;
 	UPROPERTY()
-	FVector Velocity;
+	FVector Velocity = FVector::Zero();
 	UPROPERTY()
-	float Time;
+	float Time = 0.0f;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -44,7 +43,8 @@ private:
 	FSnapshot LastSnapshot;
 	TArray<FSnapshot> Buffer = TArray<FSnapshot>();
 
-	USceneComponent* Target;
+	UPROPERTY()
+	USceneComponent* TargetComponent;
 
 	UFUNCTION(Server, Unreliable, WithValidation)
 	void SendSnapshotToServer(const FSnapshot Snapshot);
@@ -56,10 +56,10 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings, meta = (ToolTip="Replicates movement of the root component."))
 	bool UseActor = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings, meta = (ToolTip="Replicates movement of the specified component."))
 	FString ComponentName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Settings)
