@@ -135,11 +135,12 @@ bool USmoothNet::SendSnapshotToClients_Validate(FSnapshot Snapshot)
 
 bool USmoothNet::HasAuthority() const
 {
+	const APawn* Pawn = Cast<APawn>(GetOwner());
 	const bool IsServer = IsNetMode(NM_DedicatedServer) || IsNetMode(NM_ListenServer);
 	switch (AuthorityMode)
 	{
 	case EAuthorityMode::Client:
-		return GetOwner()->GetInstigator()->IsLocallyControlled() && !IsServer;
+		return IsValid(Pawn) && Pawn->IsLocallyControlled() && !IsServer;
 	case EAuthorityMode::Server:
 		return IsServer;
 	default:
